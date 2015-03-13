@@ -14,13 +14,13 @@ type WebSocketController struct {
 }
 
 type User struct {
-	Uid int
+	Uid      int
 	Username string
 	Conn     *websocket.Conn
 }
 
 type Msg struct {
-	Uid int
+	Uid      int
 	Username string
 	Type     int
 	Msg      string
@@ -35,20 +35,30 @@ var (
 )
 
 const (
-	EVENT_JOIN = iota
-	EVENT_LEAVE
+	EVENT_LEAVE = iota
+	EVENT_JOIN
 	EVENT_MSG
 )
 
 func join(this *WebSocketController) User {
 	username := this.GetString("username")
 	ws, _ := websocket.Upgrade(this.Ctx.ResponseWriter, this.Ctx.Request, nil, 1024, 1024)
-	user := User{Uid:uid,Username: username, Conn: ws}
-	userList.PushBack(user)
+	user := User{Uid: uid, Username: username, Conn: ws}
 	joinChan <- user
+	for user := userList.Front(); user != nil; user = user.Next() {
+		data := user.Value.(User)
+		msg := Msg{Uid: data.Uid, Username: data.Username, Type: EVENT_JOIN, Time: time.Now()}
+		jdata, err := json.Marshal(msg)
+		if err != nil {
+			beego.Error("Fail to marshal event:", err)
+		}
+		ws.WriteMessage(websocket.TextMessage, jdata)
+	}
+	userList.PushBack(user)
 	return user
 }
-func leave(username string) {
+func leave(this *WebSocketController) {
+	username := this.GetString("username")
 	for user := userList.Front(); user != nil; user = user.Next() {
 		name := user.Value.(User).Username
 		if name == username {
@@ -56,9 +66,8 @@ func leave(username string) {
 			userList.Remove(user)
 		}
 	}
-	
-}
 
+}
 func send(msg Msg) {
 	data, err := json.Marshal(msg)
 	if err != nil {
@@ -76,10 +85,10 @@ func init() {
 		for {
 			select {
 			case user := <-joinChan:
-				msg := Msg{Uid:user.Uid,Username: user.Username, Type: EVENT_JOIN, Time: time.Now()}
+				msg := Msg{Uid: user.Uid, Username: user.Username, Type: EVENT_JOIN, Time: time.Now()}
 				send(msg)
 			case user := <-leaveChan:
-				msg := Msg{Uid:user.Uid,Username: user.Username, Type: EVENT_LEAVE, Time: time.Now()}
+				msg := Msg{Uid: user.Uid, Username: user.Username, Type: EVENT_LEAVE, Time: time.Now()}
 				send(msg)
 			}
 		}
@@ -100,13 +109,13 @@ func (this *WebSocketController) Join() {
 
 func (this *WebSocketController) Msg() {
 	user := join(this)
-	defer leave(user.Username)
+	defer leave(this)
 	for {
 		_, p, err := user.Conn.ReadMessage()
 		if err != nil {
 			return
 		}
-		msg := Msg{Uid:user.Uid,Username: user.Username, Type: EVENT_MSG, Msg: string(p), Time: time.Now()}
+		msg := Msg{Uid: user.Uid, Username: user.Username, Type: EVENT_MSG, Msg: string(p), Time: time.Now()}
 		send(msg)
 
 	}

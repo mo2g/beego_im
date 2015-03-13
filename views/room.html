@@ -1,126 +1,134 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE  html>
+<html  lang="en">
 <head>
-<title>Matrix Admin</title>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<link rel="stylesheet" href="/static/css/bootstrap.min.css" />
-<link rel="stylesheet" href="/static/css/matrix-style.css" />
-<link href='http://fonts.useso.com/css?family=Open+Sans:400,700,800' rel='stylesheet' type='text/css'>
+<title>Matrix  Admin</title>
+<meta  charset="UTF-8"  />
+<meta  name="viewport"  content="width=device-width,  initial-scale=1.0"  />
+<link  rel="stylesheet"  href="http://libs.useso.com/js/bootstrap/2.3.0/css/bootstrap.min.css"  />
+
+<link  rel="stylesheet"  href="/static/css/matrix-style.css"  />
+<link  href='http://fonts.useso.com/css?family=Open+Sans:400,700,800'  rel='stylesheet'  type='text/css'>
 </head>
 <body>
-  <div class="container-fluid"><hr>
-    <div class="row-fluid">
-      <div class="span12">
-        <div class="widget-box widget-chat">
-          <div class="widget-title"> <span class="icon"> <i class="icon-comment"></i> </span>
-          </div>
-          <div class="widget-content nopadding">
-            <div class="chat-users panel-right2">
-              <div class="panel-title">
-                <h5>在线用户</h5>
-              </div>
-				<div class="panel-content nopadding">
-					<ul id="user_list" class="contact-list"></ul>
+<div  class="container-fluid"><hr>
+	<div  class="row-fluid">
+		<div  class="span12">
+	            <div  class="widget-box  widget-chat">
+	                <div  class="widget-title">  <span  class="icon">  <i  class="icon-comment"></i>  </span></div>
+	                <div  class="widget-content  nopadding">
+	                    <div  class="chat-users  panel-right2">
+	                        <div  class="panel-title">
+	                            <h5>在线用户</h5>
+	                        </div>
+				<div  class="panel-content  nopadding">
+					<ul  id="user_list"  class="contact-list"></ul>
 				</div>
-            </div>
-            <div class="chat-content panel-left2">
-              <div class="chat-messages" id="chat-messages">
-                <div id="chat-messages-inner"></div>
-              </div>
-              <div class="chat-message well">
-                <button id="send" class="btn btn-success">Send</button>
-                <span class="input-box">
-                <input type="text" name="msg-box" id="msg-box" />
-                </span> </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-<script type="text/javascript" src="/static/js/jquery-1.10.1.min.js"></script>
+	                    </div>
+	                    <div  class="chat-content  panel-left2">
+	                        <div  class="chat-messages"  id="chat-messages">
+	                            <div  id="chat-messages-inner"></div>
+	                        </div>
+	                        <div  class="chat-message  well">
+	                            <button  id="send"  class="btn  btn-success">Send</button>
+	                            <span  class="input-box">
+	                            <input  type="text"  name="msg-box"  id="msg-box"  />
+	                            </span>  </div>
+	                    </div>
+	                </div>
+	            </div>
+		</div>
+	</div>
+</div>
+<script  type="text/javascript"  src="http://libs.useso.com/js/jquery/1.11.1/jquery.min.js"></script>
 
-<script type="text/javascript">
-var sock = null,
-	wsuri = "ws://"+window.location.host+"/msg",
-	username = '{{.UserName}}',
-	Uid = '{{.Uid}}';
-jQuery(function($) {
-	//username = $.trim($('#user_{{.Uid}} span').html());
-	wsuri += '?username=' +username;
-	sock = new WebSocket(wsuri);
-	sock.onopen = function() {
-		console.log("connected to " + wsuri);
+<script  type="text/javascript">
+var  username  =  '{{.UserName}}',
+	Uid  =  '{{.Uid}}',
+	wsuri  =  "ws://"+window.location.host + "/msg" + '?username='  +username,
+	sock  =  new  WebSocket(wsuri);
+
+jQuery(function($)  {
+	
+	sock.onopen  =  function()  {
+		console.log("connected  to  "  +  wsuri);
 	}
-	sock.onclose = function(e) {
-		console.log("connection closed (" + e.code + ")");
+	sock.onclose  =  function(e)  {
+		console.log("connection  closed  ("  +  e.code  +  ")");
 	}
-	sock.onmessage = function(e) {
-		var data = JSON.parse(e.data);
-		switch(data.Type) {
-			case 0://加入
-				user_template = '<li id="user_'+data.Uid+'" class="online"><a href="#"><img alt="" src="/static/img/av1.jpg" /> <span>'+data.Username+'</span></a></li>';
-				$('#user_list').append(user_template);
-				break;
-			case 1://
+	sock.onmessage  =  function(e)  {
+		var  data  =  JSON.parse(e.data),
+			img = null;
+		switch(data.Type)  {
+			case  0://离开
+				user_leave(data.Uid,data.Username);
 			break;
-			case 2://发送信息
-				add_message(data.Username,'/static/img/av1.jpg',data.Msg,true);
+			case  1://加入
+				user_join(data.Uid,data.Username);
+				break;
+			case  2://发送信息
+				img = user_img(userid);
+				send_msg(data.Username,img,data.Msg,true);
 			break;
 
 		}
-		console.log("message received: " + e.data);
+		console.log("message  received:  "  +  e.data);
 	}
 
-	var msg_template = '<p><span class="msg-block"><strong></strong><span class="time"></span><span class="msg"></span></span></p>',
-		user_template = '<li id="user_{{.Uid}}" class="online"><a href="#"><img alt="" src="/static/img/av1.jpg" /> <span>{{.UserName}}</span></a></li>';
+	var user_template = null;
 
 	$('#send').click(function(){
-		var msg = $('#msg-box').val();
-		if( msg != ''){
+		var  msg  =  $('#msg-box').val();
+		if(  msg  !=  ''){
 			sock.send(msg);
 		}
 	});
-  
-	$('.chat-message input').keypress(function(e){
-		if(e.which == 13) {
-			var msg = $('#msg-box').val();
-			if( msg != ''){
+    
+	$('.chat-message  input').keypress(function(e){
+		if(e.which  ==  13)  {
+			var  msg  =  $('#msg-box').val();
+			if(  msg  !=  ''){
 				sock.send(msg);
 			}
 		}
 	});
- 
-var i = 0;
-function add_message(name,img,msg,clear) {
-	i = i + 1;
-	var  inner = $('#chat-messages-inner');
-	var time = new Date();
-	var hours = time.getHours();
-	var minutes = time.getMinutes();
-	if(hours < 10) hours = '0' + hours;
-	if(minutes < 10) minutes = '0' + minutes;
-	var id = 'msg-'+i;
-	var idname = name.replace(' ','-').toLowerCase();
-	inner.append('<p id="'+id+'" class="user-'+idname+'">'
-	                +'<span class="msg-block"><img src="'+img+'" alt="" /><strong>'+name+'</strong> <span class="time">- '+hours+':'+minutes+'</span>'
-	                +'<span class="msg">'+msg+'</span></span></p>');
+  
+var  i  =  0;
+function  send_msg(name,img,msg,clear)  {
+	i  =  i  +  1;
+	var    inner  =  $('#chat-messages-inner');
+	var  time  =  new  Date();
+	var  hours  =  time.getHours();
+	var  minutes  =  time.getMinutes();
+	if(hours  <  10)  hours  =  '0'  +  hours;
+	if(minutes  <  10)  minutes  =  '0'  +  minutes;
+	var  id  =  'msg-'+i;
+	var  idname  =  name.replace('  ','-').toLowerCase();
+	inner.append('<p  id="'+id+'"  class="user-'+idname+'">'
+	                                +'<span  class="msg-block"><img  src="'+img+'"  alt=""  /><strong>'+name+'</strong>  <span  class="time">-  '+hours+':'+minutes+'</span>'
+	                                +'<span  class="msg">'+msg+'</span></span></p>');
 	$('#'+id).hide().fadeIn(800);
-	if(clear) {
-		$('.chat-message input').val('').focus();
+	if(clear)  {
+		$('.chat-message  input').val('').focus();
 	}
-	$('#chat-messages').animate({ scrollTop: inner.height() },1000);
+	$('#chat-messages').animate({  scrollTop:  inner.height()  },1000);
 }
-function remove_user(userid,name) {
-	i = i + 1;
-	$('.contact-list li#user-'+userid).addClass('offline').delay(1000).slideUp(800,function(){
+function user_join(userid,name) {
+	user_template  =  '<li  id="user_'+userid+'"  class="online"><a  href="#"><img  alt=""  src="'+user_img(userid)+'"  /><span>'+name+'</span></a></li>';
+	$('#user_list').append(user_template);
+}
+function user_leave(userid,name)  {
+	i  =  i  +  1;
+	$('#user_'+userid).addClass('offline').delay(1000).slideUp(800,function(){
 		$(this).remove();
 	});
-	var  inner = $('#chat-messages-inner');
-	var id = 'msg-'+i;
-	inner.append('<p class="offline" id="'+id+'"><span>User '+name+' left the chat</span></p>');
+	var    inner  =  $('#chat-messages-inner');
+	var  id  =  'msg-'+i;
+	inner.append('<p  class="offline"  id="'+id+'"><span>用户  '+name+'  离开聊天室</span></p>');
 	$('#'+id).hide().fadeIn(800);
+}
+function user_img(userid) {
+	userid = userid % 5 + 1;
+	return '/static/img/av'+userid+'.jpg';
 }
 });
 </script>
