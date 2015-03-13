@@ -1,7 +1,7 @@
 package main
 
 import (
-	_ "go.mo2g.com/routers"
+	_ "im/routers"
 	"github.com/astaxie/beego"
 )
 

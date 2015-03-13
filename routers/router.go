@@ -1,10 +1,14 @@
 package routers
 
 import (
-	"go.mo2g.com/controllers"
+	"im/controllers"
+
 	"github.com/astaxie/beego"
 )
 
 func init() {
-    beego.Router("/", &controllers.MainController{})
+	//首页
+	beego.Router("/", &controllers.WebSocketController{})
+	beego.Router("/join", &controllers.WebSocketController{}, "get:Join")
+	beego.Router("/msg", &controllers.WebSocketController{}, "get:Msg")
 }

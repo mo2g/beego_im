@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>基于beego的在线聊天系统</title>
+</head>
+<body>
+<form action="/join" method="get">
+<p>用户名：<input id="username" name="username"></p>
+<p><button id="join">加入聊天室</button></p>
+</form>
+<p>
+	发送内容: <input id="message" type="text" value="Hello, world!">
+</p>
+<button id="send">Send Message</button>
+<script type="text/javascript" src="/static/js/jquery-1.10.1.min.js"></script>
+<script type="text/javascript">
+var sock = null,
+	wsuri = "ws://10.0.0.59:8080/send",
+	username = '';
+jQuery(function($) {
+	$('#join').click(function() {
+		username = $.trim($('#username').val());
+		wsuri += '?username=' +username;
+		sock = new WebSocket(wsuri);
+		sock.onopen = function() {
+			console.log("connected to " + wsuri);
+		}
+		sock.onclose = function(e) {
+			console.log("connection closed (" + e.code + ")");
+		}
+		sock.onmessage = function(e) {
+			console.log("message received: " + e.data);
+		}
+		$('#send').click(function() {
+			var msg = $('#message').val();
+			sock.send(msg);
+			//console.log("message send: " + msg);
+		});
+	})
+	
+});
+
+</script>
+</body>
+</html>
