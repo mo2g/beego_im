@@ -66,7 +66,7 @@ jQuery(function($)  {
 				user_join(data.Uid,data.Username);
 				break;
 			case  2://发送信息
-				img = user_img(userid);
+				img = user_img(data.Uid);
 				send_msg(data.Username,img,data.Msg,true);
 			break;
 
